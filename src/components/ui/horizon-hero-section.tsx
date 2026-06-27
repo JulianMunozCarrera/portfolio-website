@@ -404,7 +404,59 @@ export const Component = () => {
       tl.from(scrollProgressRef.current, { opacity: 0, y: 50, duration: 1, ease: "power2.out" }, "-=0.5");
     }
 
-    return () => { tl.kill(); };
+    // Fade the fixed HORIZON text out as the user scrolls into the next section.
+    // Container is 300vh; "10% top" = scroll 30vh, "30% top" = scroll 90vh — fully gone
+    // before COSMOS reaches the viewport center at scroll 100vh.
+    const horizonOut = gsap.to([titleRef.current, subtitleRef.current], {
+      opacity: 0,
+      y: -60,
+      ease: "none",
+      scrollTrigger: {
+        trigger: containerRef.current,
+        start: "10% top",
+        end: "30% top",
+        scrub: 0.8,
+      },
+    });
+
+    // Fade each scrollable section in as it enters and out as it exits.
+    const sectionTweens: gsap.core.Tween[] = [];
+    containerRef.current!.querySelectorAll(".content-section").forEach((section) => {
+      const fadeIn = gsap.fromTo(
+        section,
+        { opacity: 0, y: 50 },
+        {
+          opacity: 1,
+          y: 0,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: section,
+            start: "top 70%",
+            end: "top top",
+            scrub: 0.8,
+          },
+        }
+      );
+      const fadeOut = gsap.to(section, {
+        opacity: 0,
+        y: -50,
+        ease: "power2.in",
+        scrollTrigger: {
+          trigger: section,
+          start: "bottom 60%",
+          end: "bottom 0%",
+          scrub: 0.8,
+        },
+      });
+      sectionTweens.push(fadeIn, fadeOut);
+    });
+
+    return () => {
+      tl.kill();
+      horizonOut.scrollTrigger?.kill();
+      horizonOut.kill();
+      sectionTweens.forEach((t) => { t.scrollTrigger?.kill(); t.kill(); });
+    };
   }, [isReady]);
 
   useEffect(() => {
